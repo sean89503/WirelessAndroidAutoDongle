@@ -226,14 +226,14 @@ void BluetoothHandler::connectDevice() {
 
 void BluetoothHandler::retryConnectLoop() {
     bool should_exit = false;
-    std::future<void> connectWithRetryFuture = connectWithRetryPromise->get_future();
+    std::shared_ptr<std::promise<void>> promise = connectWithRetryPromise;
+    std::future<void> connectWithRetryFuture = promise->get_future();
 
     while (!should_exit) {
         connectDevice();
 
         if (connectWithRetryFuture.wait_for(std::chrono::seconds(20)) == std::future_status::ready) {
             should_exit = true;
-            connectWithRetryPromise = nullptr;
         }
     }
 
@@ -281,7 +281,9 @@ std::optional<std::thread> BluetoothHandler::connectWithRetry() {
 
 void BluetoothHandler::stopConnectWithRetry() {
     if (connectWithRetryPromise) {
-        connectWithRetryPromise->set_value();
+        std::shared_ptr<std::promise<void>> promise = connectWithRetryPromise;
+        connectWithRetryPromise = nullptr;
+        promise->set_value();
     }
 }
 
